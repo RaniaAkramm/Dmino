@@ -2,85 +2,143 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <title>Dmino - طاولة اللعب</title>
+    <title>Dmino - الطاولة الواقعية</title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <style>
-        body { background-color: #2d5a27; } /* لون أخضر طاولة اللعب التقليدي */
-        .domino-piece {
-            width: 50px; height: 90px;
-            background: #fdf6e3; border: 2px solid #5d4037;
-            border-radius: 6px; display: flex; flex-direction: column;
-            align-items: center; justify-content: space-around;
-            font-weight: bold; font-size: 1.2rem; cursor: pointer;
-            transition: transform 0.2s;
-        }
-        .domino-piece:hover { transform: scale(1.05); }
-        .board-container {
-            display: flex; flex-wrap: wrap; gap: 10px;
-            padding: 20px; background: rgba(0,0,0,0.2);
-            border-radius: 15px; min-height: 200px;
-            align-items: center; justify-content: center;
-        }
-        .board-piece {
-            width: 50px; height: 90px; background: #fff;
-            border: 2px solid #333; border-radius: 4px;
-            display: flex; flex-direction: column; align-items: center;
+        /* خلفية خشبية تحاكي الصورة المرفقة */
+        .wood-table {
+            background-color: #5c4033;
+            background-image: radial-gradient(rgba(255,255,255,0.05) 15%, transparent 20%),
+                              radial-gradient(rgba(0,0,0,0.3) 50%, rgba(0,0,0,0.6));
         }
     </style>
 </head>
-<body class="p-4 flex flex-col items-center">
+<body class="bg-slate-900 text-white min-h-screen flex flex-col justify-between p-4 font-sans select-none">
 
-    <h1 class="text-white text-4xl font-bold mb-6">DMino Table</h1>
+    <header class="text-center py-2 bg-slate-950 rounded-lg shadow-lg flex justify-between items-center px-6">
+        <h1 class="text-3xl font-black tracking-wider text-amber-500">DMino PRO</h1>
+        <button onclick="restartGame()" class="bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold py-1.5 px-5 rounded-full text-sm transition">
+            توزيع جديد 🔄
+        </button>
+    </header>
 
-    <!-- منطقة اللعب الرئيسية (الطاولة) -->
-    <div id="game-board" class="board-container w-full max-w-4xl shadow-2xl"></div>
+    <main class="flex-grow flex items-center justify-center my-4 p-2 rounded-xl wood-table shadow-2xl border-4 border-amber-900/40 relative overflow-hidden">
+        <canvas id="dominoCanvas" width="800" height="450" class="w-full max-w-4xl h-auto"></canvas>
+    </main>
 
-    <!-- منطقة اللاعب -->
-    <div class="mt-10 bg-black/30 p-6 rounded-t-3xl w-full max-w-4xl">
-        <h2 class="text-white text-sm mb-4">أحجارك:</h2>
-        <div id="player-hand" class="flex flex-wrap gap-4"></div>
-        <button id="draw-btn" onclick="playerDraw()" class="mt-6 bg-yellow-600 text-white px-6 py-2 rounded-lg font-bold">سحب حجر</button>
-    </div>
+    <footer class="bg-slate-950/80 p-4 rounded-lg border border-slate-800">
+        <h3 class="text-xs text-amber-400 font-mono mb-3 tracking-wider text-center">YOUR HAND (اضغط على القطعة لتجربة رسمها في المسار المتعرج)</h3>
+        <div id="player-hand" class="flex flex-wrap gap-3 justify-center min-h-[90px]">
+            </div>
+    </footer>
 
     <script>
-        let board = [], playerHand = [], boneyard = [];
+        const canvas = document.getElementById('dominoCanvas');
+        const ctx = canvas.getContext('2d');
 
-        // تحسين عرض الطاولة كخطوط مستمرة
-        function renderBoard() {
-            const boardDiv = document.getElementById('game-board');
-            boardDiv.innerHTML = '';
-            board.forEach(piece => {
-                const el = document.createElement('div');
-                el.className = "board-piece p-1";
-                el.innerHTML = `<span>${piece[0]}</span><hr class="w-full border-black my-1"><span>${piece[1]}</span>`;
-                boardDiv.appendChild(el);
-            });
-        }
-
-        // تحسين عرض أحجار اللاعب
-        function renderHands() {
-            const handDiv = document.getElementById('player-hand');
-            handDiv.innerHTML = '';
-            playerHand.forEach((piece, index) => {
-                const el = document.createElement('div');
-                el.className = "domino-piece";
-                el.onclick = () => playPiece(index);
-                el.innerHTML = `<span>${piece[0]}</span><div class="w-full h-px bg-black"></div><span>${piece[1]}</span>`;
-                handDiv.appendChild(el);
-            });
-        }
-
-        // باقي المنطق البرمجي (كما في السابق)...
-        // قمت بتبسيط الدوال هنا لتوضيح الشكل:
-        function createDeck() { /* ... */ }
-        function startGame() { 
-            /* كود التوزيع */
-            board = [[2,3], [3,5], [5,6]]; // مثال لشكل السلسلة
-            playerHand = [[1,2], [6,6], [0,1], [4,4]];
-            renderBoard(); renderHands();
-        }
+        // أحجار وهمية في يد اللاعب لتجربة التصميم والالتفاف
+        let playerHand = [[6,6], [6,3], [3,3], [3,5], [5,1], [1,1], [1,2], [2,4]];
         
-        startGame();
-    </script>
-</body>
-</html>
+        // مسار النقاط على الطاولة (إحداثيات تتبع حركة الأفعى كما في الصورة)
+        // كل قطعة لها: x, y, رقم1, رقم2, هل هي رأسية (isVertical), وهل هي دبل (isDouble)
+        let playedPieces = [
+            { x: 150, y: 100, p1: 5, p2: 4, isVertical: false, isDouble: false },
+            { x: 225, y: 100, p1: 4, p2: 4, isVertical: true,  isDouble: true },  // الدبل يوضع عمودي
+            { x: 270, y: 100, p1: 4, p2: 1, isVertical: false, isDouble: false },
+            { x: 345, y: 100, p1: 1, p2: 2, isVertical: false, isDouble: false },
+            // التفاف ونزول للأسفل
+            { x: 420, y: 100, p1: 2, p2: 2, isVertical: true,  isDouble: true },
+            { x: 420, y: 165, p1: 2, p2: 0, isVertical: true,  isDouble: false },
+            { x: 420, y: 240, p1: 0, p2: 3, isVertical: true,  isDouble: false },
+            // التفاف يساراً
+            { x: 345, y: 315, p1: 3, p2: 3, isVertical: false, isDouble: true },
+            { x: 270, y: 315, p1: 3, p2: 6, isVertical: false, isDouble: false }
+        ];
+
+        // دالة رسم قطعة دومينو واقعية بنقاطها
+        function drawDomino(x, y, p1, p2, isVertical, isDouble) {
+            let w = isVertical ? 36 : 70;
+            let h = isVertical ? 70 : 36;
+
+            ctx.save();
+            
+            // تصميم جسم القطعة (لون عاجي/كريمي مثل الصورة)
+            ctx.fillStyle = "#fbf9f3";
+            ctx.shadowColor = "rgba(0, 0, 0, 0.4)";
+            ctx.shadowBlur = 6;
+            ctx.shadowOffsetX = 3;
+            ctx.shadowOffsetY = 4;
+            
+            // رسم مستطيل القطعة بزوايا دائرية خفيفة
+            ctx.beginPath();
+            ctx.roundRect(x, y, w, h, 4);
+            ctx.fill();
+            ctx.shadowColor = "transparent"; // إلغاء الظل للمكونات الداخلية
+            
+            ctx.strokeStyle = "#2b1d0c";
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // رسم الخط الفاصل الأسود في المنتصف
+            ctx.strokeStyle = "#4a3b2c";
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            if (isVertical) {
+                ctx.moveTo(x, y + h/2); ctx.lineTo(x + w, y + h/2);
+            } else {
+                ctx.moveTo(x + w/2, y); ctx.lineTo(x + w/2, y + h);
+            }
+            ctx.stroke();
+
+            // رسم نقطة المنتصف النحاسية البسيطة (الموجودة في الدومينو الحقيقي)
+            ctx.fillStyle = "#8a7355";
+            ctx.beginPath();
+            if (isVertical) ctx.arc(x + w/2, y + h/2, 2, 0, Math.PI * 2);
+            else ctx.arc(x + w/2, y + h/2, 2, 0, Math.PI * 2);
+            ctx.fill();
+
+            // دالة مصغرة لرسم النقاط السوداء داخل القطعة
+            function drawDots(num, cx, cy, size) {
+                ctx.fillStyle = "#111";
+                // توزيع مبسط للنقاط بناءً على الرقم
+                if (num === 1) {
+                    ctx.beginPath(); ctx.arc(cx, cy, 3, 0, Math.PI*2); ctx.fill();
+                } else if (num === 2) {
+                    ctx.beginPath(); ctx.arc(cx-size/4, cy-size/4, 2.5, 0, Math.PI*2); ctx.fill();
+                    ctx.beginPath(); ctx.arc(cx+size/4, cy+size/4, 2.5, 0, Math.PI*2); ctx.fill();
+                } else if (num === 3) {
+                    ctx.beginPath(); ctx.arc(cx, cy, 2.5, 0, Math.PI*2); ctx.fill();
+                    ctx.beginPath(); ctx.arc(cx-size/4, cy-size/4, 2.5, 0, Math.PI*2); ctx.fill();
+                    ctx.beginPath(); ctx.arc(cx+size/4, cy+size/4, 2.5, 0, Math.PI*2); ctx.fill();
+                } else if (num >= 4) {
+                    ctx.beginPath(); ctx.arc(cx-size/4, cy-size/4, 2.5, 0, Math.PI*2); ctx.fill();
+                    ctx.beginPath(); ctx.arc(cx+size/4, cy-size/4, 2.5, 0, Math.PI*2); ctx.fill();
+                    ctx.beginPath(); ctx.arc(cx-size/4, cy+size/4, 2.5, 0, Math.PI*2); ctx.fill();
+                    ctx.beginPath(); ctx.arc(cx+size/4, cy+size/4, 2.5, 0, Math.PI*2); ctx.fill();
+                }
+                if (num === 5) {
+                    ctx.beginPath(); ctx.arc(cx, cy, 2.5, 0, Math.PI*2); ctx.fill();
+                }
+                if (num === 6) {
+                    ctx.beginPath(); ctx.arc(cx-size/4, cy, 2.5, 0, Math.PI*2); ctx.fill();
+                    ctx.beginPath(); ctx.arc(cx+size/4, cy, 2.5, 0, Math.PI*2); ctx.fill();
+                }
+            }
+
+            // تحديد مراكز النصفين لرسم النقاط
+            if (isVertical) {
+                drawDots(p1, x + w/2, y + h/4, 30);
+                drawDots(p2, x + w/2, y + (3*h)/4, 30);
+            } else {
+                drawDots(p1, x + w/4, y + h/2, 30);
+                drawDots(p2, x + (3*w)/4, y + h/2, 30);
+            }
+
+            ctx.restore();
+        }
+
+        // رسم الطاولة بالكامل
+        function drawBoard() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            playedPieces.forEach(p => {
+                drawDom
