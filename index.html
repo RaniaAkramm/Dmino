@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dmino Game</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <style>
+        .domino-piece {
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.15);
+            transition: all 0.2s ease;
+        }
+        .domino-piece:hover {
+            transform: translateY(-4px);
+            border-color: #34d399;
+        }
+        /* تصميم الحجر المستلقي على الطاولة */
+        .board-piece {
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+    </style>
+</head>
+<body class="bg-slate-800 text-white min-h-screen flex flex-col justify-between p-4 font-sans select-none">
+
+    <!-- رأس الصفحة مع الاسم الجديد Dmino -->
+    <header class="text-center py-3 bg-slate-900 rounded-lg shadow-lg flex justify-between items-center px-6">
+        <h1 class="text-3xl font-black tracking-wider text-emerald-400 bg-clip-text">DMino</h1>
+        <button onclick="startGame()" class="bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold py-1.5 px-5 rounded-full text-sm transition transform active:scale-95">
+            لعبة جديدة 🔄
+        </button>
+    </header>
+
+    <!-- طاولة اللعب (مسار الأحجار الملعوبة) -->
+    <main class="flex-grow flex flex-col items-center justify-center my-4 p-4 border-2 border-dashed border-slate-700 rounded-xl bg-slate-800/50">
+        <div id="game-status" class="text-md text-emerald-300 mb-6 bg-slate-900/60 px-4 py-1.5 rounded-full">
+            اضغط على "لعبة جديدة" للبدء
+        </div>
+        
+        <!-- هنا تظهر سلسلة الأحجار الملعوبة -->
+        <div id="game-board" class="flex items-center justify-center flex-wrap gap-2 min-h-[100px] w-full p-4 bg-slate-900/40 rounded-lg overflow-x-auto">
+            <!-- الأحجار الملعوبة ستوضع هنا برمجياً -->
+        </div>
+    </main>
+
+    <!-- منطقة عرض أحجار اللاعبين -->
+    <footer class="space-y-4 bg-slate-900 p-4 rounded-lg shadow-inner">
+        <!-- أحجار الخصم (الكمبيوتر) -->
+        <div>
+            <div class="flex justify-between items-center mb-2">
+                <h3 class="text-xs text-red-400 font-medium font-mono">COMPUTER HAND</h3>
+                <span id="bot-count" class="bg-red-500/20 text-red-300 text-xs px-2 py-0.5 rounded">0</span>
+            </div>
+            <div id="bot-hand" class="flex flex-wrap gap-1.5 min-h-[50px] p-2 bg-slate-800/40 rounded-lg opacity-60"></div>
+        </div>
+
+        <!-- أحجار المستخدم (أنت) -->
+        <div>
+            <div class="flex justify-between items-center mb-2">
+                <h3 class="text-xs text-blue-400 font-medium font-mono">YOUR HAND (Dmino Pieces)</h3>
+                <span id="player-count" class="bg-blue-500/20 text-blue-300 text-xs px-2 py-0.5 rounded">0</span>
+            </div>
+            <div id="player-hand" class="flex flex-wrap gap-2 min-h-[70px] p-2 bg-slate-800/40 rounded-lg"></div>
+        </div>
+    </footer>
+
+    <!-- المنطق البرمجي المطور للعبة Dmino -->
+    <script {StrictMode}>
+        let deck = [];
+        let playerHand = [];
+        let botHand = [];
+        let board = []; // السلسلة الملعوبة على الطاولة [ [1,2], [2,5], [5,5] ]
+
+        // 1. توليد الطقم الكامل (28 حجر)
+        function createDeck() {
+            const newDeck = [];
+            for (let i = 0; i <= 6; i++) {
+                for (let j = i; j <= 6; j++) {
+                    newDeck.push([i, j]);
+                }
+            }
+            return newDeck;
+        }
+
+        // 2. خلط الأحجار
+        function shuffle(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+            return array;
+        }
+
+        // 3. بدء اللعبة وتصفير الطاولة
+        function startGame() {
+            deck = createDeck();
+            shuffle(deck);
+            board = []; // تفريغ الطاولة
+
+            // توزيع 7 أحجار لكل طرف
+            playerHand = deck.splice(0, 7);
+            botHand = deck.splice(0, 7);
+
+            document.getElementById('game-status').innerText = "دورك الآن! اختر حجرًا مناسبًا للعب.";
+            
+            renderBoard();
+            renderHands();
+        }
+
+        // 4. منطق لعب الحجر (التحقق والمطابقة)
+        function playPiece(index) {
+            const piece = playerHand[index];
+
+            // إذا كانت الطاولة فارغة، يمكن لعب أي حجر كبداية
+            if (board.length === 0) {
+                board.push(piece);
+                playerHand.splice(index, 1);
+                endTurn();
+                return;
+            }
+
+            // تحديد الأرقام المفتوحة على أطراف الطاولة الحالية
+            const leftOpen = board[0][0];
+            const rightOpen = board[board.length - 1][1];
+
+            // التحقق والمطابقة مع الطرف الأيمن أو الأيسر
+            if (piece[0] === rightOpen) {
+                board.push(piece); // إضافة لليمين كما هو
+                playerHand.splice(index, 1);
+                endTurn();
+            } else if (piece[1] === rightOpen) {
+                board.push([piece[1], piece[0]]); // قلب الحجر قبل إضافته لليمين
+                playerHand.splice(index, 1);
+                endTurn();
+            } else if (piece[1] === leftOpen) {
+                board.unshift(piece); // إضافة لليسار كما هو
+                playerHand.splice(index, 1);
+                endTurn();
+            } else if (piece[0] === leftOpen) {
+                board.unshift([piece[1], piece[0]]); // قلب الحجر قبل إضافته لليسار
+                playerHand.splice(index, 1);
+                endTurn();
+            } else {
+                alert("هذا الحجر لا يطابق أطراف الطاولة! اختر حجراً آخر.");
+            }
+        }
+
+        // 5. إنهاء الدور وتحديث الشاشة
+        function endTurn() {
+            renderBoard();
+            renderHands();
+            
+            // تحقق من الفوز
+            if (playerHand.length === 0) {
+                document.getElementById('game-status').innerText = "🎉 مبروك! لقد فزت في لعبة Dmino!";
+                return;
+            }
+
+            document.getElementById('game-status').innerText = "تم قبول الحجر بنجاح.";
+            // ملاحظة: هنا سنضع ذكاء الكمبيوتر الاصطناعي في الخطوة القادمة ليقوم بالرد التلقائي!
+        }
+
+        // 6. عرض الطاولة والأحجار بصرياً
+        function renderBoard() {
+            const boardDiv = document.getElementById('game-board');
+            boardDiv.innerHTML = '';
+
+            if (board.length === 0) {
+                boardDiv.innerHTML = '<span class="text-slate-500 text-sm">الطاولة فارغة، العب أول حجر</span>';
+                return;
+            }
+
+            board.forEach(piece => {
+                const pieceEl = document.createElement('div');
+                pieceEl.className = "board-piece bg-amber-50 text-slate-900 font-extrabold rounded px-2 py-1 flex items-center justify-center border border-amber-200 text-md h-10 min-w-14 gap-1.5";
+                pieceEl.innerHTML = `<span>${piece[0]}</span><div class="h-full w-[1.5px] bg-slate-400"></div><span>${piece[1]}</span>`;
+                boardDiv.appendChild(pieceEl);
+            });
+        }
+
+        function renderHands() {
+            const playerHandDiv = document.getElementById('player-hand');
+            const botHandDiv = document.getElementById('bot-hand');
+            
+            playerHandDiv.innerHTML = '';
+            botHandDiv.innerHTML = '';
+
+            // عرض أحجار اللاعب مع تفعيل إمكانية الضغط للعب
+            playerHand.forEach((piece, index) => {
+                const pieceEl = document.createElement('div');
+                pieceEl.className = "domino-piece bg-slate-100 text-slate-900 font-bold rounded p-2 flex flex-col items-center justify-center border-2 border-transparent cursor-pointer w-10 text-center";
+                pieceEl.setAttribute('onclick', `playPiece(${index})`);
+                pieceEl.innerHTML = `<span>${piece[0]}</span><div class="w-full h-[1.5px] bg-slate-300 my-0.5"></div><span>${piece[1]}</span>`;
+                playerHandDiv.appendChild(pieceEl);
+            });
+
+            // عرض أحجار الكمبيوتر مقلوبة 
+            botHand.forEach(() => {
+                const pieceEl = document.createElement('div');
+                pieceEl.className = "bg-slate-700 border border-slate-600 rounded w-8 h-12 flex items-center justify-center text-slate-500 text-xs shadow-inner";
+                pieceEl.innerText = "✖";
+                botHandDiv.appendChild(pieceEl);
+            });
+
+            document.getElementById('player-count').innerText = playerHand.length;
+            document.getElementById('bot-count').innerText = botHand.length;
+        }
+    </script>
+</body>
+  </html>
+  
