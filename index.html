@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dmino Game</title>
+    <title>Dmino Game - المطورة</title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <style>
         .domino-piece {
@@ -14,46 +14,61 @@
             transform: translateY(-4px);
             border-color: #34d399;
         }
-        /* تصميم الحجر المستلقي على الطاولة */
         .board-piece {
-            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.4);
+            animation: fadeIn 0.3s ease-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.9); }
+            to { opacity: 1; transform: scale(1); }
         }
     </style>
 </head>
 <body class="bg-slate-800 text-white min-h-screen flex flex-col justify-between p-4 font-sans select-none">
 
-    <!-- رأس الصفحة مع الاسم الجديد Dmino -->
+    <!-- رأس الصفحة -->
     <header class="text-center py-3 bg-slate-900 rounded-lg shadow-lg flex justify-between items-center px-6">
-        <h1 class="text-3xl font-black tracking-wider text-emerald-400 bg-clip-text">DMino</h1>
-        <button onclick="startGame()" class="bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold py-1.5 px-5 rounded-full text-sm transition transform active:scale-95">
-            لعبة جديدة 🔄
-        </button>
+        <h1 class="text-3xl font-black tracking-wider text-emerald-400">DMino</h1>
+        <div class="flex items-center gap-3">
+            <!-- مخزن السحب (الاحتياطي) -->
+            <div class="bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-700 text-sm">
+                الاحتياطي: <span id="boneyard-count" class="text-emerald-400 font-bold">0</span> 🎴
+            </div>
+            <button onclick="startGame()" class="bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold py-1.5 px-4 rounded-full text-sm transition transform active:scale-95">
+                لعبة جديدة 🔄
+            </button>
+        </div>
     </header>
 
-    <!-- طاولة اللعب (مسار الأحجار الملعوبة) -->
-    <main class="flex-grow flex flex-col items-center justify-center my-4 p-4 border-2 border-dashed border-slate-700 rounded-xl bg-slate-800/50">
-        <div id="game-status" class="text-md text-emerald-300 mb-6 bg-slate-900/60 px-4 py-1.5 rounded-full">
+    <!-- طاولة اللعب -->
+    <main class="flex-grow flex flex-col items-center justify-center my-4 p-4 border-2 border-dashed border-slate-700 rounded-xl bg-slate-900/20 relative">
+        <div id="game-status" class="text-md text-emerald-300 mb-6 bg-slate-900/80 px-5 py-2 rounded-full border border-slate-750 text-center max-w-md">
             اضغط على "لعبة جديدة" للبدء
         </div>
         
-        <!-- هنا تظهر سلسلة الأحجار الملعوبة -->
-        <div id="game-board" class="flex items-center justify-center flex-wrap gap-2 min-h-[100px] w-full p-4 bg-slate-900/40 rounded-lg overflow-x-auto">
-            <!-- الأحجار الملعوبة ستوضع هنا برمجياً -->
+        <!-- سلسلة الأحجار على الطاولة -->
+        <div id="game-board" class="flex items-center justify-center flex-wrap gap-2 min-h-[120px] w-full p-4 bg-slate-950/40 rounded-lg overflow-x-auto">
+            <!-- الأحجار تظهر هنا -->
         </div>
+
+        <!-- زر السحب للاعب (يظهر فقط في دوره) -->
+        <button id="draw-btn" onclick="playerDraw()" class="hidden mt-4 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold py-2 px-6 rounded-lg shadow-lg transition transform active:scale-95">
+            سحب قطعة من الاحتياطي ➕
+        </button>
     </main>
 
     <!-- منطقة عرض أحجار اللاعبين -->
     <footer class="space-y-4 bg-slate-900 p-4 rounded-lg shadow-inner">
-        <!-- أحجار الخصم (الكمبيوتر) -->
+        <!-- أحجار الكمبيوتر -->
         <div>
             <div class="flex justify-between items-center mb-2">
                 <h3 class="text-xs text-red-400 font-medium font-mono">COMPUTER HAND</h3>
                 <span id="bot-count" class="bg-red-500/20 text-red-300 text-xs px-2 py-0.5 rounded">0</span>
             </div>
-            <div id="bot-hand" class="flex flex-wrap gap-1.5 min-h-[50px] p-2 bg-slate-800/40 rounded-lg opacity-60"></div>
+            <div id="bot-hand" class="flex flex-wrap gap-1.5 min-h-[50px] p-2 bg-slate-800/40 rounded-lg opacity-50"></div>
         </div>
 
-        <!-- أحجار المستخدم (أنت) -->
+        <!-- أحجار المستخدم -->
         <div>
             <div class="flex justify-between items-center mb-2">
                 <h3 class="text-xs text-blue-400 font-medium font-mono">YOUR HAND (Dmino Pieces)</h3>
@@ -63,14 +78,13 @@
         </div>
     </footer>
 
-    <!-- المنطق البرمجي المطور للعبة Dmino -->
     <script {StrictMode}>
-        let deck = [];
+        let boneyard = [];
         let playerHand = [];
         let botHand = [];
-        let board = []; // السلسلة الملعوبة على الطاولة [ [1,2], [2,5], [5,5] ]
+        let board = []; 
+        let isPlayerTurn = true;
 
-        // 1. توليد الطقم الكامل (28 حجر)
         function createDeck() {
             const newDeck = [];
             for (let i = 0; i <= 6; i++) {
@@ -81,7 +95,6 @@
             return newDeck;
         }
 
-        // 2. خلط الأحجار
         function shuffle(array) {
             for (let i = array.length - 1; i > 0; i--) {
                 const j = Math.floor(Math.random() * (i + 1));
@@ -90,110 +103,195 @@
             return array;
         }
 
-        // 3. بدء اللعبة وتصفير الطاولة
         function startGame() {
-            deck = createDeck();
+            const deck = createDeck();
             shuffle(deck);
-            board = []; // تفريغ الطاولة
+            board = [];
+            isPlayerTurn = true;
 
-            // توزيع 7 أحجار لكل طرف
             playerHand = deck.splice(0, 7);
             botHand = deck.splice(0, 7);
+            boneyard = deck; // الأحجار المتبقية تصبح هي الاحتياطي
 
-            document.getElementById('game-status').innerText = "دورك الآن! اختر حجرًا مناسبًا للعب.";
-            
-            renderBoard();
-            renderHands();
+            updateStatus("دورك الآن! اختر حجرًا مناسبًا للعب، أو اسحب إذا لم تملك قطعة مطابقة.");
+            renderAll();
         }
 
-        // 4. منطق لعب الحجر (التحقق والمطابقة)
+        // التحقق هل الحجر قابل للعب أم لا
+        function canPlay(piece) {
+            if (board.length === 0) return true;
+            const leftOpen = board[0][0];
+            const rightOpen = board[board.length - 1][1];
+            return piece[0] === leftOpen || piece[1] === leftOpen || piece[0] === rightOpen || piece[1] === rightOpen;
+        }
+
+        // التحقق هل يملك اللاعب أي حركة متاحة في يده
+        function hasAvailableMoves(hand) {
+            return hand.some(piece => canPlay(piece));
+        }
+
+        // منطق لعب الحجر للاعب
         function playPiece(index) {
+            if (!isPlayerTurn) return;
+
             const piece = playerHand[index];
 
-            // إذا كانت الطاولة فارغة، يمكن لعب أي حجر كبداية
             if (board.length === 0) {
                 board.push(piece);
                 playerHand.splice(index, 1);
-                endTurn();
+                checkWinOrNext('player');
                 return;
             }
 
-            // تحديد الأرقام المفتوحة على أطراف الطاولة الحالية
             const leftOpen = board[0][0];
             const rightOpen = board[board.length - 1][1];
 
-            // التحقق والمطابقة مع الطرف الأيمن أو الأيسر
             if (piece[0] === rightOpen) {
-                board.push(piece); // إضافة لليمين كما هو
+                board.push(piece);
                 playerHand.splice(index, 1);
-                endTurn();
+                checkWinOrNext('player');
             } else if (piece[1] === rightOpen) {
-                board.push([piece[1], piece[0]]); // قلب الحجر قبل إضافته لليمين
+                board.push([piece[1], piece[0]]);
                 playerHand.splice(index, 1);
-                endTurn();
+                checkWinOrNext('player');
             } else if (piece[1] === leftOpen) {
-                board.unshift(piece); // إضافة لليسار كما هو
+                board.unshift(piece);
                 playerHand.splice(index, 1);
-                endTurn();
+                checkWinOrNext('player');
             } else if (piece[0] === leftOpen) {
-                board.unshift([piece[1], piece[0]]); // قلب الحجر قبل إضافته لليسار
+                board.unshift([piece[1], piece[0]]);
                 playerHand.splice(index, 1);
-                endTurn();
+                checkWinOrNext('player');
             } else {
-                alert("هذا الحجر لا يطابق أطراف الطاولة! اختر حجراً آخر.");
+                alert("هذا الحجر لا يطابق أطراف الطاولة!");
             }
         }
 
-        // 5. إنهاء الدور وتحديث الشاشة
-        function endTurn() {
-            renderBoard();
-            renderHands();
+        // سحب حجر للاعب
+        function playerDraw() {
+            if (!isPlayerTurn) return;
             
-            // تحقق من الفوز
-            if (playerHand.length === 0) {
-                document.getElementById('game-status').innerText = "🎉 مبروك! لقد فزت في لعبة Dmino!";
+            if (boneyard.length > 0) {
+                const drawn = boneyard.pop();
+                playerHand.push(drawn);
+                renderAll();
+                
+                // إذا أصبح لديه حركة بعد السحب، يكمل دوره، وإذا لم يكن لديه يستمر في السحب أو ينقل الدور
+                if (canPlay(drawn)) {
+                    updateStatus("سحبت قطعة قابلة للعب! العب الآن.");
+                } else if (!hasAvailableMoves(playerHand) && boneyard.length === 0) {
+                    updateStatus("لا توجد أحجار بالاحتياطي ولا تملك حركة، ينتقل الدور للكمبيوتر.");
+                    setTimeout(botTurn, 1500);
+                }
+            }
+        }
+
+        // ذكاء الكمبيوتر التلقائي (Bot AI)
+        function botTurn() {
+            isPlayerTurn = false;
+            updateStatus("الكمبيوتر يفكر الآن...");
+            renderAll();
+
+            setTimeout(() => {
+                // محاولة اللعب من اليد الحالية
+                let playIndex = botHand.findIndex(piece => canPlay(piece));
+
+                // إذا لم يملك حركة، يسحب من الاحتياطي حتى يجد قطعة أو ينتهي الاحتياطي
+                while (playIndex === -1 && boneyard.length > 0) {
+                    const drawn = boneyard.pop();
+                    botHand.push(drawn);
+                    playIndex = botHand.findIndex(piece => canPlay(piece));
+                }
+
+                // تنفيذ اللعب إذا وجد قطعة
+                if (playIndex !== -1) {
+                    const piece = botHand[playIndex];
+                    if (board.length === 0) {
+                        board.push(piece);
+                    } else {
+                        const leftOpen = board[0][0];
+                        const rightOpen = board[board.length - 1][1];
+
+                        if (piece[0] === rightOpen) board.push(piece);
+                        else if (piece[1] === rightOpen) board.push([piece[1], piece[0]]);
+                        else if (piece[1] === leftOpen) board.unshift(piece);
+                        else if (piece[0] === leftOpen) board.unshift([piece[1], piece[0]]);
+                    }
+                    botHand.splice(playIndex, 1);
+                    checkWinOrNext('bot');
+                } else {
+                    // الكمبيوتر لا يملك حركة والاحتياطي فارغ
+                    updateStatus("الكمبيوتر لم يجد حركة مرادفة، الدور لك الآن!");
+                    isPlayerTurn = true;
+                    renderAll();
+                }
+            }, 1200);
+        }
+
+        function checkWinOrNext(lastPlayer) {
+            renderAll();
+            if (lastPlayer === 'player' && playerHand.length === 0) {
+                updateStatus("🎉 🎉 مبروك! لقد فزت في لعبة Dmino واكتسحت الكمبيوتر!");
+                isPlayerTurn = false;
+                document.getElementById('draw-btn').classList.add('hidden');
+                return;
+            }
+            if (lastPlayer === 'bot' && botHand.length === 0) {
+                updateStatus("😢 حظاً أوفر، الكمبيوتر هو من فاز هذه المرة!");
+                isPlayerTurn = false;
                 return;
             }
 
-            document.getElementById('game-status').innerText = "تم قبول الحجر بنجاح.";
-            // ملاحظة: هنا سنضع ذكاء الكمبيوتر الاصطناعي في الخطوة القادمة ليقوم بالرد التلقائي!
+            // التحقق من حالة "القفل" (Block) إذا لم يعد أحد يملك حركات والاحتياطي فارغ
+            if (boneyard.length === 0 && !hasAvailableMoves(playerHand) && !hasAvailableMoves(botHand)) {
+                updateStatus("🔒 انتهت اللعبة بالقفل! (لا يوجد حركات متاحة). سيتم حساب النقاط.");
+                return;
+            }
+
+            // تبديل الأدوار
+            if (lastPlayer === 'player') {
+                botTurn();
+            } else {
+                isPlayerTurn = true;
+                updateStatus("دورك الآن، اختر حجرًا للعب.");
+                renderAll();
+            }
         }
 
-        // 6. عرض الطاولة والأحجار بصرياً
-        function renderBoard() {
+        function updateStatus(msg) {
+            document.getElementById('game-status').innerText = msg;
+        }
+
+        function renderAll() {
+            // عرض الطاولة
             const boardDiv = document.getElementById('game-board');
             boardDiv.innerHTML = '';
-
             if (board.length === 0) {
-                boardDiv.innerHTML = '<span class="text-slate-500 text-sm">الطاولة فارغة، العب أول حجر</span>';
-                return;
+                boardDiv.innerHTML = '<span class="text-slate-500 text-sm">الطاولة فارغة، ابدأ اللعب</span>';
+            } else {
+                board.forEach(piece => {
+                    const pieceEl = document.createElement('div');
+                    pieceEl.className = "board-piece bg-amber-50 text-slate-900 font-extrabold rounded px-2 py-1 flex items-center justify-center border border-amber-200 text-md h-10 min-w-14 gap-1.5";
+                    pieceEl.innerHTML = `<span>${piece[0]}</span><div class="h-full w-[1.5px] bg-slate-400"></div><span>${piece[1]}</span>`;
+                    boardDiv.appendChild(pieceEl);
+                });
             }
 
-            board.forEach(piece => {
-                const pieceEl = document.createElement('div');
-                pieceEl.className = "board-piece bg-amber-50 text-slate-900 font-extrabold rounded px-2 py-1 flex items-center justify-center border border-amber-200 text-md h-10 min-w-14 gap-1.5";
-                pieceEl.innerHTML = `<span>${piece[0]}</span><div class="h-full w-[1.5px] bg-slate-400"></div><span>${piece[1]}</span>`;
-                boardDiv.appendChild(pieceEl);
-            });
-        }
-
-        function renderHands() {
+            // عرض أحجار اللاعب
             const playerHandDiv = document.getElementById('player-hand');
-            const botHandDiv = document.getElementById('bot-hand');
-            
             playerHandDiv.innerHTML = '';
-            botHandDiv.innerHTML = '';
-
-            // عرض أحجار اللاعب مع تفعيل إمكانية الضغط للعب
             playerHand.forEach((piece, index) => {
                 const pieceEl = document.createElement('div');
-                pieceEl.className = "domino-piece bg-slate-100 text-slate-900 font-bold rounded p-2 flex flex-col items-center justify-center border-2 border-transparent cursor-pointer w-10 text-center";
+                const isPlayable = canPlay(piece) && isPlayerTurn;
+                pieceEl.className = `domino-piece bg-white text-slate-900 font-bold rounded p-2 flex flex-col items-center justify-center border-2 cursor-pointer w-10 text-center ${isPlayable ? 'border-emerald-400 bg-emerald-50/50' : 'border-transparent opacity-80'}`;
                 pieceEl.setAttribute('onclick', `playPiece(${index})`);
                 pieceEl.innerHTML = `<span>${piece[0]}</span><div class="w-full h-[1.5px] bg-slate-300 my-0.5"></div><span>${piece[1]}</span>`;
                 playerHandDiv.appendChild(pieceEl);
             });
 
-            // عرض أحجار الكمبيوتر مقلوبة 
+            // عرض أحجار الكمبيوتر (مخفية)
+            const botHandDiv = document.getElementById('bot-hand');
+            botHandDiv.innerHTML = '';
             botHand.forEach(() => {
                 const pieceEl = document.createElement('div');
                 pieceEl.className = "bg-slate-700 border border-slate-600 rounded w-8 h-12 flex items-center justify-center text-slate-500 text-xs shadow-inner";
@@ -201,10 +299,19 @@
                 botHandDiv.appendChild(pieceEl);
             });
 
+            // تحديث الأرقام والعدادات
             document.getElementById('player-count').innerText = playerHand.length;
             document.getElementById('bot-count').innerText = botHand.length;
+            document.getElementById('boneyard-count').innerText = boneyard.length;
+
+            // إظهار أو إخفاء زر السحب بناءً على الحاجة
+            const drawBtn = document.getElementById('draw-btn');
+            if (isPlayerTurn && !hasAvailableMoves(playerHand) && boneyard.length > 0) {
+                drawBtn.classList.remove('hidden');
+            } else {
+                drawBtn.classList.add('hidden');
+            }
         }
     </script>
 </body>
-  </html>
-  
+</html>
