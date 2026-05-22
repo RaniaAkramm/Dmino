@@ -2,33 +2,35 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <title>Dmino - الطاولة الواقعية</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DMino PRO</title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <style>
-        /* خلفية خشبية تحاكي الصورة المرفقة */
+        /* خلفية الطاولة الخشبية المحسنة */
         .wood-table {
-            background-color: #5c4033;
-            background-image: radial-gradient(rgba(255,255,255,0.05) 15%, transparent 20%),
-                              radial-gradient(rgba(0,0,0,0.3) 50%, rgba(0,0,0,0.6));
+            background-color: #543d2b;
+            background-image: radial-gradient(rgba(255,255,255,0.03) 15%, transparent 20%),
+                              linear-gradient(45deg, rgba(0,0,0,0.15) 25%, transparent 25%),
+                              radial-gradient(rgba(0,0,0,0.4) 40%, rgba(0,0,0,0.7));
         }
     </style>
 </head>
-<body class="bg-slate-900 text-white min-h-screen flex flex-col justify-between p-4 font-sans select-none">
+<body class="bg-slate-900 text-white min-h-screen flex flex-col justify-between p-3 font-sans select-none">
 
-    <header class="text-center py-2 bg-slate-950 rounded-lg shadow-lg flex justify-between items-center px-6">
-        <h1 class="text-3xl font-black tracking-wider text-amber-500">DMino PRO</h1>
-        <button onclick="restartGame()" class="bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold py-1.5 px-5 rounded-full text-sm transition">
+    <header class="text-center py-2 px-4 bg-slate-950 rounded-lg shadow-lg flex justify-between items-center">
+        <h1 class="text-2xl font-black tracking-wider text-amber-500">DMino PRO</h1>
+        <button onclick="restartGame()" class="bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold py-1 px-4 rounded-full text-xs transition">
             توزيع جديد 🔄
         </button>
     </header>
 
-    <main class="flex-grow flex items-center justify-center my-4 p-2 rounded-xl wood-table shadow-2xl border-4 border-amber-900/40 relative overflow-hidden">
-        <canvas id="dominoCanvas" width="800" height="450" class="w-full max-w-4xl h-auto"></canvas>
+    <main class="flex-grow flex items-center justify-center my-3 p-1 rounded-xl wood-table shadow-2xl border-2 border-amber-950 relative overflow-hidden min-h-[350px]">
+        <canvas id="dominoCanvas" width="400" height="500" class="w-full h-full object-contain"></canvas>
     </main>
 
-    <footer class="bg-slate-950/80 p-4 rounded-lg border border-slate-800">
-        <h3 class="text-xs text-amber-400 font-mono mb-3 tracking-wider text-center">YOUR HAND (اضغط على القطعة لتجربة رسمها في المسار المتعرج)</h3>
-        <div id="player-hand" class="flex flex-wrap gap-3 justify-center min-h-[90px]">
+    <footer class="bg-slate-950 p-3 rounded-lg border border-slate-800">
+        <h3 class="text-[10px] text-amber-400 font-mono mb-2 tracking-wider text-center">اضغط على القطعة لترميها في المسار المتعرج</h3>
+        <div id="player-hand" class="flex flex-wrap gap-2 justify-center min-h-[75px]">
             </div>
     </footer>
 
@@ -36,52 +38,66 @@
         const canvas = document.getElementById('dominoCanvas');
         const ctx = canvas.getContext('2d');
 
-        // أحجار وهمية في يد اللاعب لتجربة التصميم والالتفاف
-        let playerHand = [[6,6], [6,3], [3,3], [3,5], [5,1], [1,1], [1,2], [2,4]];
+        // قطع تجريبية في يد اللاعب
+        let playerHand = [[6,6], [6,3], [3,5], [5,5], [5,1], [1,2], [2,4]];
         
-        // مسار النقاط على الطاولة (إحداثيات تتبع حركة الأفعى كما في الصورة)
-        // كل قطعة لها: x, y, رقم1, رقم2, هل هي رأسية (isVertical), وهل هي دبل (isDouble)
+        // مسار الأحجار بشكل متعرج يناسب شاشة الهاتف الطولية
         let playedPieces = [
-            { x: 150, y: 100, p1: 5, p2: 4, isVertical: false, isDouble: false },
-            { x: 225, y: 100, p1: 4, p2: 4, isVertical: true,  isDouble: true },  // الدبل يوضع عمودي
-            { x: 270, y: 100, p1: 4, p2: 1, isVertical: false, isDouble: false },
-            { x: 345, y: 100, p1: 1, p2: 2, isVertical: false, isDouble: false },
-            // التفاف ونزول للأسفل
-            { x: 420, y: 100, p1: 2, p2: 2, isVertical: true,  isDouble: true },
-            { x: 420, y: 165, p1: 2, p2: 0, isVertical: true,  isDouble: false },
-            { x: 420, y: 240, p1: 0, p2: 3, isVertical: true,  isDouble: false },
-            // التفاف يساراً
-            { x: 345, y: 315, p1: 3, p2: 3, isVertical: false, isDouble: true },
-            { x: 270, y: 315, p1: 3, p2: 6, isVertical: false, isDouble: false }
+            { x: 175, y: 50,  p1: 6, p2: 6, isVertical: false, isDouble: true },
+            { x: 175, y: 100, p1: 6, p2: 3, isVertical: true,  isDouble: false },
+            { x: 175, y: 165, p1: 3, p2: 3, isVertical: false, isDouble: true },
+            // لفة إلى اليمين
+            { x: 230, y: 165, p1: 3, p2: 5, isVertical: false, isDouble: false },
+            { x: 295, y: 165, p1: 5, p2: 5, isVertical: true,  isDouble: true },
+            // نزول لأسفل اللوحة
+            { x: 295, y: 230, p1: 5, p2: 1, isVertical: true,  isDouble: false },
+            { x: 295, y: 295, p1: 1, p2: 2, isVertical: true,  isDouble: false },
+            // لفة إلى اليسار
+            { x: 230, y: 310, p1: 2, p2: 2, isVertical: false, isDouble: true },
+            { x: 165, y: 310, p1: 2, p2: 4, isVertical: false, isDouble: false }
         ];
 
-        // دالة رسم قطعة دومينو واقعية بنقاطها
+        // دالة آمنة لرسم المستطيلات بزوايا دائرية متوافقة مع كل الهواتف القديمة والحديثة
+        function drawRoundedRect(x, y, width, height, radius) {
+            ctx.beginPath();
+            ctx.moveTo(x + radius, y);
+            ctx.lineTo(x + width - radius, y);
+            ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+            ctx.lineTo(x + width, y + height - radius);
+            ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+            ctx.lineTo(x + radius, y + height);
+            ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+            ctx.lineTo(x, y + radius);
+            ctx.quadraticCurveTo(x, y, x + radius, y);
+            ctx.closePath();
+        }
+
+        // دالة رسم قطعة الدومينو بنقاطها
         function drawDomino(x, y, p1, p2, isVertical, isDouble) {
-            let w = isVertical ? 36 : 70;
-            let h = isVertical ? 70 : 36;
+            let w = isVertical ? 32 : 56;
+            let h = isVertical ? 56 : 32;
 
             ctx.save();
             
-            // تصميم جسم القطعة (لون عاجي/كريمي مثل الصورة)
-            ctx.fillStyle = "#fbf9f3";
-            ctx.shadowColor = "rgba(0, 0, 0, 0.4)";
-            ctx.shadowBlur = 6;
-            ctx.shadowOffsetX = 3;
-            ctx.shadowOffsetY = 4;
+            // تصميم اللون العاجي وجعل الظل خفيف ليناسب الهواتف
+            ctx.fillStyle = "#fcfaf4";
+            ctx.shadowColor = "rgba(0, 0, 0, 0.35)";
+            ctx.shadowBlur = 4;
+            ctx.shadowOffsetX = 2;
+            ctx.shadowOffsetY = 2;
             
-            // رسم مستطيل القطعة بزوايا دائرية خفيفة
-            ctx.beginPath();
-            ctx.roundRect(x, y, w, h, 4);
+            // رسم جسم القطعة بالدالة الآمنة البديلة
+            drawRoundedRect(x, y, w, h, 4);
             ctx.fill();
-            ctx.shadowColor = "transparent"; // إلغاء الظل للمكونات الداخلية
+            ctx.shadowColor = "transparent"; // إلغاء الظل للداخل
             
-            ctx.strokeStyle = "#2b1d0c";
-            ctx.lineWidth = 2;
+            ctx.strokeStyle = "#2d1f10";
+            ctx.lineWidth = 1.5;
             ctx.stroke();
 
-            // رسم الخط الفاصل الأسود في المنتصف
-            ctx.strokeStyle = "#4a3b2c";
-            ctx.lineWidth = 1.5;
+            // الخط الفاصل بالمنتصف
+            ctx.strokeStyle = "#5c4d3c";
+            ctx.lineWidth = 1;
             ctx.beginPath();
             if (isVertical) {
                 ctx.moveTo(x, y + h/2); ctx.lineTo(x + w, y + h/2);
@@ -90,55 +106,110 @@
             }
             ctx.stroke();
 
-            // رسم نقطة المنتصف النحاسية البسيطة (الموجودة في الدومينو الحقيقي)
-            ctx.fillStyle = "#8a7355";
+            // رسم النقطة النحاسية المركزية
+            ctx.fillStyle = "#8c765c";
             ctx.beginPath();
-            if (isVertical) ctx.arc(x + w/2, y + h/2, 2, 0, Math.PI * 2);
-            else ctx.arc(x + w/2, y + h/2, 2, 0, Math.PI * 2);
+            ctx.arc(x + w/2, y + h/2, 1.5, 0, Math.PI * 2);
             ctx.fill();
 
-            // دالة مصغرة لرسم النقاط السوداء داخل القطعة
+            // دالة رسم النقاط السوداء بدقة وحجم مناسب للهاتف
             function drawDots(num, cx, cy, size) {
                 ctx.fillStyle = "#111";
-                // توزيع مبسط للنقاط بناءً على الرقم
+                const r = 2; // نصف قطر النقطة السوداء
                 if (num === 1) {
-                    ctx.beginPath(); ctx.arc(cx, cy, 3, 0, Math.PI*2); ctx.fill();
+                    ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI*2); ctx.fill();
                 } else if (num === 2) {
-                    ctx.beginPath(); ctx.arc(cx-size/4, cy-size/4, 2.5, 0, Math.PI*2); ctx.fill();
-                    ctx.beginPath(); ctx.arc(cx+size/4, cy+size/4, 2.5, 0, Math.PI*2); ctx.fill();
+                    ctx.beginPath(); ctx.arc(cx-size/4, cy-size/4, r, 0, Math.PI*2); ctx.fill();
+                    ctx.beginPath(); ctx.arc(cx+size/4, cy+size/4, r, 0, Math.PI*2); ctx.fill();
                 } else if (num === 3) {
-                    ctx.beginPath(); ctx.arc(cx, cy, 2.5, 0, Math.PI*2); ctx.fill();
-                    ctx.beginPath(); ctx.arc(cx-size/4, cy-size/4, 2.5, 0, Math.PI*2); ctx.fill();
-                    ctx.beginPath(); ctx.arc(cx+size/4, cy+size/4, 2.5, 0, Math.PI*2); ctx.fill();
+                    ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI*2); ctx.fill();
+                    ctx.beginPath(); ctx.arc(cx-size/4, cy-size/4, r, 0, Math.PI*2); ctx.fill();
+                    ctx.beginPath(); ctx.arc(cx+size/4, cy+size/4, r, 0, Math.PI*2); ctx.fill();
                 } else if (num >= 4) {
-                    ctx.beginPath(); ctx.arc(cx-size/4, cy-size/4, 2.5, 0, Math.PI*2); ctx.fill();
-                    ctx.beginPath(); ctx.arc(cx+size/4, cy-size/4, 2.5, 0, Math.PI*2); ctx.fill();
-                    ctx.beginPath(); ctx.arc(cx-size/4, cy+size/4, 2.5, 0, Math.PI*2); ctx.fill();
-                    ctx.beginPath(); ctx.arc(cx+size/4, cy+size/4, 2.5, 0, Math.PI*2); ctx.fill();
+                    ctx.beginPath(); ctx.arc(cx-size/4, cy-size/4, r, 0, Math.PI*2); ctx.fill();
+                    ctx.beginPath(); ctx.arc(cx+size/4, cy-size/4, r, 0, Math.PI*2); ctx.fill();
+                    ctx.beginPath(); ctx.arc(cx-size/4, cy+size/4, r, 0, Math.PI*2); ctx.fill();
+                    ctx.beginPath(); ctx.arc(cx+size/4, cy+size/4, r, 0, Math.PI*2); ctx.fill();
                 }
                 if (num === 5) {
-                    ctx.beginPath(); ctx.arc(cx, cy, 2.5, 0, Math.PI*2); ctx.fill();
+                    ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI*2); ctx.fill();
                 }
                 if (num === 6) {
-                    ctx.beginPath(); ctx.arc(cx-size/4, cy, 2.5, 0, Math.PI*2); ctx.fill();
-                    ctx.beginPath(); ctx.arc(cx+size/4, cy, 2.5, 0, Math.PI*2); ctx.fill();
+                    ctx.beginPath(); ctx.arc(cx-size/4, cy, r, 0, Math.PI*2); ctx.fill();
+                    ctx.beginPath(); ctx.arc(cx+size/4, cy, r, 0, Math.PI*2); ctx.fill();
                 }
             }
 
-            // تحديد مراكز النصفين لرسم النقاط
+            // تحديد توزيع النقاط
             if (isVertical) {
-                drawDots(p1, x + w/2, y + h/4, 30);
-                drawDots(p2, x + w/2, y + (3*h)/4, 30);
+                drawDots(p1, x + w/2, y + h/4, 24);
+                drawDots(p2, x + w/2, y + (3*h)/4, 24);
             } else {
-                drawDots(p1, x + w/4, y + h/2, 30);
-                drawDots(p2, x + (3*w)/4, y + h/2, 30);
+                drawDots(p1, x + w/4, y + h/2, 24);
+                drawDots(p2, x + (3*w)/4, y + h/2, 24);
             }
 
             ctx.restore();
         }
 
-        // رسم الطاولة بالكامل
+        // رسم اللوحة بالكامل
         function drawBoard() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             playedPieces.forEach(p => {
-                drawDom
+                drawDomino(p.x, p.y, p.p1, p.p2, p.isVertical, p.isDouble);
+            });
+        }
+
+        // عرض الأحجار بأسفل الشاشة (HTML مخصص للهاتف)
+        function renderHand() {
+            const handDiv = document.getElementById('player-hand');
+            handDiv.innerHTML = '';
+            playerHand.forEach((piece, index) => {
+                const el = document.createElement('div');
+                el.className = "w-9 h-16 bg-[#fcfaf4] text-slate-950 border border-amber-950 rounded flex flex-col justify-around items-center font-black text-sm cursor-pointer shadow-md active:bg-amber-100";
+                el.onclick = () => simulatePlay(index);
+                el.innerHTML = `<span>${piece[0]}</span><div class="w-full h-[1px] bg-slate-300"></div><span>${piece[1]}</span>`;
+                handDiv.appendChild(el);
+            });
+        }
+
+        // إضافة القطعة الملعوبة لنهاية المسار المتعرج
+        function simulatePlay(index) {
+            const piece = playerHand[index];
+            const isDouble = piece[0] === piece[1];
+            let last = playedPieces[playedPieces.length - 1];
+            
+            // جعل القطع الجديدة تواصل الالتفاف لليسار ولأعلى لضمان البقاء داخل شاشة الهاتف
+            let newX = last.x - 45;
+            let newY = last.y;
+            
+            if(newX < 20) { // حماية حتى لا تخرج القطع عن يسار الشاشة
+                newX = last.x;
+                newY = last.y + 45;
+            }
+
+            playedPieces.push({
+                x: newX, y: newY,
+                p1: piece[0], p2: piece[1],
+                isVertical: !isDouble,
+                isDouble: isDouble
+            });
+
+            playerHand.splice(index, 1);
+            drawBoard();
+            renderHand();
+        }
+
+        function restartGame() {
+            playedPieces = [{ x: 175, y: 60, p1: 6, p2: 6, isVertical: false, isDouble: true }];
+            playerHand = [[6,3], [3,5], [5,5], [5,2], [2,1], [1,0], [0,0]];
+            drawBoard();
+            renderHand();
+        }
+
+        // تشغيل أولي عند تحميل الصفحة
+        drawBoard();
+        renderHand();
+    </script>
+</body>
+</html>
